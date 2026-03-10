@@ -3,6 +3,32 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Accident Payments Brand Colors */
+  --ap-bg: #0f0f10;
+  --ap-surface: #131313;
+  --ap-surface-soft: #111010;
+  --ap-panel: #151515;
+  --ap-panel-light: rgba(255, 255, 255, 0.05);
+  --ap-highlight: #f9d7b1;
+  --ap-amber: #f7c480;
+  --ap-amber-soft: rgba(247, 196, 128, 0.3);
+  --ap-accent: #ae4010;
+  --ap-accent-dark: #7c2c0a;
+  --ap-accent-shadow: rgba(174, 64, 16, 0.4);
+  --ap-accent-soft: rgba(174, 64, 16, 0.15);
+  --ap-accent-border: rgba(174, 64, 16, 0.6);
+  --ap-border: rgba(255, 255, 255, 0.15);
+  --ap-border-strong: rgba(255, 255, 255, 0.4);
+  --ap-text-dark: #141010;
+
+  /* Theme-aware card/surface tokens (light mode defaults) */
+  --ap-card-bg: rgba(0, 0, 0, 0.02);
+  --ap-card-border: rgba(0, 0, 0, 0.08);
+  --ap-card-hover: rgba(0, 0, 0, 0.04);
+  --ap-card-divide: rgba(0, 0, 0, 0.06);
+  --ap-dot-bg: rgba(0, 0, 0, 0.08);
+  --ap-dot-hover: rgba(0, 0, 0, 0.15);
 }
 
 @theme inline {
@@ -16,6 +42,20 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+
+    /* Dark mode overrides for AP brand */
+    --ap-bg: #202020;
+    --ap-surface: #202020;
+    --ap-surface-soft: #202020;
+    --ap-panel: #202020;
+
+    /* Theme-aware card/surface tokens (dark mode) */
+    --ap-card-bg: rgba(255, 255, 255, 0.02);
+    --ap-card-border: rgba(255, 255, 255, 0.06);
+    --ap-card-hover: rgba(255, 255, 255, 0.03);
+    --ap-card-divide: rgba(255, 255, 255, 0.04);
+    --ap-dot-bg: rgba(255, 255, 255, 0.1);
+    --ap-dot-hover: rgba(255, 255, 255, 0.2);
   }
 }
 

@@ -56,6 +56,10 @@ export default function UploadPage() {
   const [isCompleting, setIsCompleting] = React.useState(false);
   const [isCompleted, setIsCompleted] = React.useState(false);
 
+  const sessionUnlockKey = React.useMemo(() => {
+    return submissionId ? `ap_upload_unlocked:${submissionId}` : "";
+  }, [submissionId]);
+
   const refresh = React.useCallback(async () => {
     if (!submissionId) return;
     setLoadingStatus(true);
@@ -67,12 +71,34 @@ export default function UploadPage() {
     }
   }, [submissionId]);
 
+  React.useEffect(() => {
+    if (!submissionId) return;
+    if (!sessionUnlockKey) return;
+
+    try {
+      const unlockedInSession = sessionStorage.getItem(sessionUnlockKey) === "true";
+      if (unlockedInSession) {
+        void refresh();
+      }
+    } catch {
+      // ignore
+    }
+  }, [submissionId, refresh, sessionUnlockKey]);
+
   const onUnlock = async () => {
     setUnlockError(null);
     setUnlocking(true);
     try {
       const next = await resolveRequest({ submissionId, passcode });
       setStatus(next);
+
+      if (sessionUnlockKey) {
+        try {
+          sessionStorage.setItem(sessionUnlockKey, "true");
+        } catch {
+          // ignore
+        }
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unable to unlock. Please try again.";
       setUnlockError(msg);
@@ -139,11 +165,7 @@ export default function UploadPage() {
 
       <PageShell>
         <div className="space-y-6 sm:space-y-8">
-          <Header 
-            showDoneButton={unlocked && allDocsUploaded && !isCompleted}
-            onDone={handleDone}
-            isDoneLoading={isCompleting}
-          />
+          <Header />
 
           {isCompleted ? (
             <Card>
@@ -165,16 +187,17 @@ export default function UploadPage() {
               </CardContent>
             </Card>
           ) : (
-          <div className="grid gap-6 lg:gap-8 xl:grid-cols-[440px_1fr]">
-            <div className="space-y-4 sm:space-y-5">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-sky-700" />
-                    Unlock this upload page
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+          <>
+            <div className="grid gap-6 lg:gap-8 xl:grid-cols-[440px_1fr]">
+              <div className="space-y-4 sm:space-y-5">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-sky-700" />
+                      Unlock this upload page
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                   <div className="text-sm text-zinc-600">
                     Enter the passcode you received by email or text. This helps protect your documents.
                   </div>
@@ -325,14 +348,28 @@ export default function UploadPage() {
                       </div>
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <div className="text-xs text-zinc-500">
-                If you have trouble uploading, try a different file format (PDF/JPG) or a smaller file.
+                <div className="text-xs text-zinc-500">
+                  If you have trouble uploading, try a different file format (PDF/JPG) or a smaller file.
+                </div>
               </div>
             </div>
-          </div>
+
+            {unlocked && allDocsUploaded && !isCompleted ? (
+              <div className="flex items-center justify-end">
+                <Button
+                  onClick={handleDone}
+                  disabled={isCompleting}
+                  isLoading={isCompleting}
+                  className="bg-[var(--ap-accent)] hover:bg-[var(--ap-accent-dark)] text-white"
+                >
+                  Done
+                </Button>
+              </div>
+            ) : null}
+          </>
           )}
         </div>
       </PageShell>

@@ -1,5 +1,9 @@
 import type { DocumentCategory, RequestStatus, UploadedDoc } from "@/lib/types";
-import { uploadDocument as uploadToSupabase } from "@/lib/supabase";
+import {
+  uploadDocument as uploadToSupabase,
+  listUploadedDocuments,
+  deleteUploadedDocument,
+} from "@/lib/supabase";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -31,6 +35,29 @@ function ensureSubmission(submissionId: string) {
   return mockDb[submissionId];
 }
 
+async function hydrateUploadedFromSupabase(status: RequestStatus): Promise<RequestStatus> {
+  const next: RequestStatus = {
+    ...status,
+    uploaded: {
+      police_report: [],
+      insurance_document: [],
+      medical_report: [],
+    },
+  };
+
+  const [police, insurance, medical] = await Promise.all([
+    listUploadedDocuments({ submissionId: status.token, category: "police_report" }),
+    listUploadedDocuments({ submissionId: status.token, category: "insurance_document" }),
+    listUploadedDocuments({ submissionId: status.token, category: "medical_report" }),
+  ]);
+
+  if (!police.error) next.uploaded.police_report = police.docs;
+  if (!insurance.error) next.uploaded.insurance_document = insurance.docs;
+  if (!medical.error) next.uploaded.medical_report = medical.docs;
+
+  return next;
+}
+
 export async function resolveRequest(params: {
   submissionId: string;
   passcode: string;
@@ -47,7 +74,8 @@ export async function resolveRequest(params: {
     throw new Error("Invalid link.");
   }
 
-  return ensureSubmission(submissionId);
+  const status = ensureSubmission(submissionId);
+  return hydrateUploadedFromSupabase(status);
 }
 
 export async function uploadDocument(params: {
@@ -80,10 +108,15 @@ export async function uploadDocument(params: {
   params.onProgress(90);
   await sleep(200);
 
+  const storagePath = uploadResult.path;
+  if (!storagePath) {
+    throw new Error("Upload failed");
+  }
+
   const doc: UploadedDoc = {
-    id: `doc_${makeId()}`,
+    id: storagePath,
     category: params.category,
-    fileName: params.file.name,
+    fileName: storagePath.split("/").pop() ?? params.file.name,
     fileSize: params.file.size,
     createdAt: nowIso(),
   };
@@ -95,7 +128,8 @@ export async function uploadDocument(params: {
 
 export async function getStatus(submissionId: string): Promise<RequestStatus> {
   await sleep(300);
-  return ensureSubmission(submissionId);
+  const status = ensureSubmission(submissionId);
+  return hydrateUploadedFromSupabase(status);
 }
 
 export async function completeUpload(submissionId: string): Promise<void> {
@@ -117,22 +151,8 @@ export async function deleteDocument(params: {
   documentId: string;
 }): Promise<void> {
   await sleep(300);
-  const status = ensureSubmission(params.submissionId);
-  
-  // Find the document to get storage path
-  const docIndex = status.uploaded[params.category].findIndex(
-    (doc) => doc.id === params.documentId
-  );
-  
-  if (docIndex === -1) {
-    throw new Error('Document not found');
+  const deleteResult = await deleteUploadedDocument(params.documentId);
+  if (!deleteResult.success) {
+    throw new Error(deleteResult.error || "Failed to delete document");
   }
-  
-  // In production, this would:
-  // 1. Delete from Supabase Storage
-  // 2. Delete from lead_documents table
-  // 3. Log event in lead_document_request_events
-  
-  // For now, just remove from mock database
-  status.uploaded[params.category].splice(docIndex, 1);
 }
